@@ -3,12 +3,31 @@
 
 import json
 import os
+import unittest
 from unittest.mock import patch
 
 import models
 from models.base_model import BaseModel
 from models.engine.file_storage import FileStorage
 from tests.helpers import StorageTestCase
+
+
+class TestFileStorageClassAttributes(unittest.TestCase):
+    """Verify the two private class attributes named in the checker."""
+
+    def test_file_path_is_private_class_string(self):
+        """The default file path exists on the class and equals file.json."""
+        self.assertIn("_FileStorage__file_path", FileStorage.__dict__)
+        self.assertIs(type(FileStorage._FileStorage__file_path), str)
+        self.assertEqual(FileStorage._FileStorage__file_path, "file.json")
+        self.assertFalse(hasattr(FileStorage(), "__file_path"))
+
+    def test_objects_is_private_class_dictionary(self):
+        """The class declares a shared dictionary accessible through all."""
+        self.assertIn("_FileStorage__objects", FileStorage.__dict__)
+        self.assertIs(type(FileStorage._FileStorage__objects), dict)
+        self.assertIs(FileStorage().all(), FileStorage._FileStorage__objects)
+        self.assertFalse(hasattr(FileStorage(), "__objects"))
 
 
 class TestFileStorage(StorageTestCase):

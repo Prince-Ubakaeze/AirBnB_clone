@@ -87,3 +87,54 @@ class TestIntegration(StorageTestCase):
         self.run_process(input_text="create BaseModel\n\nquit\n")
         with open(self.path, encoding="utf-8") as stream:
             self.assertEqual(len(json.load(stream)), 1)
+
+    def test_all_model_types_reload_across_processes(self):
+        """A fresh process reconstructs every concrete model class."""
+        self.run_process(
+            "from models import storage\n"
+            "from console import HBNBCommand\n"
+            "for name, model_class in HBNBCommand.classes.items():\n"
+            "    instance = model_class()\n"
+            "    instance.label = name + ' saved value'\n"
+            "storage.save()\n")
+        output = self.run_process(
+            "import json\n"
+            "from models import storage\n"
+            "print(json.dumps({type(obj).__name__: obj.label "
+            "for obj in storage.all().values()}))\n")
+        names = ("BaseModel", "User", "Place", "State", "City", "Amenity",
+                 "Review")
+        self.assertEqual(json.loads(output),
+                         {name: name + " saved value" for name in names})
+
+    def test_model_first_import_with_existing_mixed_file(self):
+        """Every import entry point works with all seven saved classes."""
+        self.run_process(
+            "from console import HBNBCommand\n"
+            "from models import storage\n"
+            "for model_class in HBNBCommand.classes.values():\n"
+            "    model_class()\n"
+            "storage.save()\n")
+        for module in ("base_model", "user", "place", "state", "city",
+                       "amenity", "review", "engine.file_storage"):
+            with self.subTest(module=module):
+                output = self.run_process(
+                    "import models.{}\n".format(module)
+                    + "from models import storage\n"
+                    + "print(len(storage.all()))\n")
+                self.assertEqual(output, "7\n")
+
+    def test_private_storage_checks_print_ok_with_saved_user(self):
+        """Importing storage succeeds even when a saved User exists."""
+        self.run_process(
+            "from models.user import User\n"
+            "User().save()\n")
+        output = self.run_process(
+            "from models.engine.file_storage import FileStorage\n"
+            "assert type(FileStorage._FileStorage__file_path) is str\n"
+            "assert FileStorage._FileStorage__file_path == 'file.json'\n"
+            "print('OK')\n"
+            "assert type(FileStorage._FileStorage__objects) is dict\n"
+            "assert len(FileStorage._FileStorage__objects) == 1\n"
+            "print('OK')\n")
+        self.assertEqual(output, "OK\nOK\n")

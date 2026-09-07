@@ -1,18 +1,32 @@
 #!/usr/bin/python3
-"""Provide a small command interpreter for the BaseModel milestone."""
+"""Provide a command interpreter for the AirBnB clone models."""
 
 import cmd
 import shlex
 
 from models import storage
+from models.amenity import Amenity
 from models.base_model import BaseModel
+from models.city import City
+from models.place import Place
+from models.review import Review
+from models.state import State
+from models.user import User
 
 
 class HBNBCommand(cmd.Cmd):
-    """Create, inspect, update and delete persisted BaseModel objects."""
+    """Create, inspect, update and delete persisted model objects."""
 
     prompt = "(hbnb) "
-    classes = {"BaseModel": BaseModel}
+    classes = {
+        "BaseModel": BaseModel,
+        "User": User,
+        "Place": Place,
+        "State": State,
+        "City": City,
+        "Amenity": Amenity,
+        "Review": Review,
+    }
 
     def emptyline(self):
         """Ignore an empty line instead of repeating the previous command."""
@@ -111,16 +125,28 @@ class HBNBCommand(cmd.Cmd):
         name, value = arguments[2:4]
         if name in ("id", "created_at", "updated_at"):
             return
-        if name.startswith("_") or hasattr(type(instance), name):
+        class_value = getattr(type(instance), name, None)
+        if name.startswith("_") or callable(class_value):
             self.stdout.write("** invalid attribute name **\n")
             return
-        try:
-            value = int(value)
-        except ValueError:
+        if class_value is not None:
+            value_type = type(class_value)
+            if value_type not in (str, int, float):
+                self.stdout.write("** invalid attribute value **\n")
+                return
             try:
-                value = float(value)
+                value = value_type(value)
+            except (TypeError, ValueError, OverflowError):
+                self.stdout.write("** invalid attribute value **\n")
+                return
+        else:
+            try:
+                value = int(value)
             except ValueError:
-                pass
+                try:
+                    value = float(value)
+                except ValueError:
+                    pass
         setattr(instance, name, value)
         instance.save()
 

@@ -1,5 +1,5 @@
 #!/usr/bin/python3
-"""Serialize BaseModel instances to JSON and restore them from disk."""
+"""Serialize model instances to JSON and restore them from disk."""
 
 import json
 
@@ -26,7 +26,7 @@ class FileStorage:
             json.dump(data, stream)
 
     def reload(self):
-        """Restore saved BaseModel instances; ignore a missing file."""
+        """Restore all supported model classes; ignore a missing file."""
         try:
             with open(self.__file_path, "r", encoding="utf-8") as stream:
                 data = json.load(stream)
@@ -34,9 +34,23 @@ class FileStorage:
             return
 
         # Import after models.storage exists to avoid circular imports.
+        from models.amenity import Amenity
         from models.base_model import BaseModel
+        from models.city import City
+        from models.place import Place
+        from models.review import Review
+        from models.state import State
+        from models.user import User
 
-        classes = {"BaseModel": BaseModel}
+        classes = {
+            "BaseModel": BaseModel,
+            "User": User,
+            "Place": Place,
+            "State": State,
+            "City": City,
+            "Amenity": Amenity,
+            "Review": Review,
+        }
         restored = {}
         for key, attributes in data.items():
             model_class = classes[attributes["__class__"]]

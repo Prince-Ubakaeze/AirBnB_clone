@@ -153,3 +153,66 @@ class TestConsole(StorageTestCase):
     def test_unknown_command(self):
         """Unknown commands return the standard interpreter error."""
         self.assertIn("Unknown syntax", self.execute("unknown_command"))
+
+    def test_create_show_update_destroy_for_every_class(self):
+        """All model classes support the required CRUD commands."""
+        for name in ("User", "Place", "State", "City", "Amenity", "Review"):
+            with self.subTest(model=name):
+                identifier = self.execute("create " + name).strip()
+                key = "{}.{}".format(name, identifier)
+                self.assertIn(key, storage.all())
+                output = self.execute("show {} {}".format(name, identifier))
+                self.assertIn("[" + name + "]", output)
+                self.execute('update {} {} custom_text "Saved value"'.format(
+                    name, identifier))
+                self.assertEqual(storage.all()[key].custom_text, "Saved value")
+                storage.reload()
+                self.assertEqual(storage.all()[key].custom_text, "Saved value")
+                self.assertIn(identifier, self.execute("all " + name))
+                self.execute("destroy {} {}".format(name, identifier))
+                self.assertNotIn(key, storage.all())
+
+    def test_all_filters_mixed_model_classes(self):
+        """A class-filtered list excludes other model classes."""
+        user_id = self.execute("create User").strip()
+        place_id = self.execute("create Place").strip()
+        output = self.execute("all User")
+        self.assertIn(user_id, output)
+        self.assertNotIn(place_id, output)
+        self.assertIn(place_id, self.execute("all"))
+
+    def test_update_accepts_declared_string_fields(self):
+        """Public class defaults can be edited and keep their string type."""
+        identifier = self.execute("create User").strip()
+        self.execute('update User {} first_name "Ada Lovelace"'.format(
+            identifier))
+        self.execute('update User {} password "0123"'.format(identifier))
+        user = storage.all()["User." + identifier]
+        self.assertEqual(user.first_name, "Ada Lovelace")
+        self.assertEqual(user.password, "0123")
+
+    def test_update_preserves_declared_numeric_types(self):
+        """Place number fields use their declared integer or float type."""
+        identifier = self.execute("create Place").strip()
+        self.execute("update Place {} number_rooms 3".format(identifier))
+        self.execute("update Place {} latitude 6".format(identifier))
+        place = storage.all()["Place." + identifier]
+        self.assertEqual(place.number_rooms, 3)
+        self.assertIs(type(place.number_rooms), int)
+        self.assertEqual(place.latitude, 6.0)
+        self.assertIs(type(place.latitude), float)
+
+    def test_invalid_values_do_not_change_typed_fields(self):
+        """Invalid input cannot corrupt a typed public default."""
+        identifier = self.execute("create Place").strip()
+        for name, value in (("number_rooms", "invalid"),
+                            ("latitude", "invalid"),
+                            ("amenity_ids", "invalid")):
+            with self.subTest(attribute=name):
+                output = self.execute("update Place {} {} {}".format(
+                    identifier, name, value))
+                self.assertEqual(output, "** invalid attribute value **\n")
+        place = storage.all()["Place." + identifier]
+        self.assertEqual(place.number_rooms, 0)
+        self.assertEqual(place.latitude, 0.0)
+        self.assertEqual(place.amenity_ids, [])

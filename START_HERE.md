@@ -3,6 +3,26 @@
 You do not need to create or upload each file separately. Choose one setup
 method below; both contain the same project.
 
+## Update the earlier package
+
+Download the latest `setup_airbnb.py` and save it in your existing
+`AirBnB_clone` repository folder. Open a terminal in that folder and run:
+
+```bash
+python3 setup_airbnb.py --target . --update
+python3 -m unittest discover tests
+```
+
+This installs the six concrete model classes, their test files and storage
+support for all seven model types. It also updates the basic console commands.
+The update preserves an existing `AUTHORS`, `file.json`, Git metadata and
+unrelated files. Before replacing changed project files, it creates a ZIP
+backup beside your repository and prints its location. Identical files are
+left alone, so you can rerun the same command.
+
+The earlier package was limited to tasks 0–5. These additional models and
+tests address the later model checks included in the reported checker output.
+
 ## Method 1: one setup script
 
 Download `setup_airbnb.py`, open a terminal in its download folder, and run:
@@ -22,16 +42,15 @@ python3 setup_airbnb.py --target /path/to/AirBnB_clone \
   --author "Your Full Name <your-email@example.com>"
 ```
 
-The script detects conflicting files before writing. If it finds conflicts,
-it stops and lists them. Generate into a different new folder, then compare
-and merge your existing work. Identical files are kept. Repository metadata
-and unrelated existing files are left in place.
+Without `--update`, the script detects conflicting files before writing and
+stops if any exist. Use the update instructions above to update an existing
+project with a backup. Identical files are kept in either mode.
 
 On Windows, use `py` instead of `python3` if needed.
 
 ## Method 2: one ZIP archive
 
-Download and extract `AirBnB_clone_tasks_0-5.zip`. It contains one
+Download and extract `AirBnB_clone.zip`. It contains one
 `AirBnB_clone` folder with the project code and tests. Replace the example
 contributor in `AUTHORS` before submitting. Do not upload the ZIP itself as
 the project: the repository must contain the extracted files and folders.
@@ -47,6 +66,16 @@ python3 console.py
 
 Type `help` in the console, or `quit` to leave it. See `README.md` for the
 style check, non-interactive test command and usage examples.
+
+To run an individual test file, include its `.py` suffix, or use a dotted
+module name:
+
+```bash
+python3 -m unittest tests/test_models/test_user.py
+python3 -m unittest tests.test_models.test_user
+```
+
+The full test discovery command above runs all six model test modules too.
 
 ## Put all files on GitHub together
 

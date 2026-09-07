@@ -1,18 +1,19 @@
-# AirBnB clone: BaseModel and file storage
+# AirBnB clone: models, console and file storage
 
-This Python project implements tasks 0–5 from the supplied AirBnB clone
-assignment: project documentation, contributor information, style compliance,
-unit tests, a shared base model, dictionary reconstruction and JSON file storage.
-It is the initial backend milestone, not a booking website.
+This Python project implements the shared base model, six concrete model
+classes, JSON persistence and the basic command interpreter for the AirBnB
+clone assignment. It includes documentation, contributor information and unit
+tests. This is a console backend, not a booking website.
 
-A small command interpreter is included so the model and persistence can be
-used interactively. This version supports `BaseModel` only. Tasks after task 5
-were not included in the supplied instructions.
+The supported classes are `BaseModel`, `User`, `Place`, `State`, `City`,
+`Amenity` and `Review`. All support `create`, `show`, `destroy`, `update` and
+`all`. Advanced dot-notation commands such as `User.all()` are outside this
+package's implemented scope.
 
 ## Quick start
 
-Use Python 3; this package was verified with Python 3.12. Run the following
-from the `AirBnB_clone` repository root:
+The source uses Python 3.8-compatible syntax. The application and tests were
+run with Python 3.12. Run the following from the `AirBnB_clone` repository root:
 
 ```bash
 python3 console.py
@@ -50,9 +51,22 @@ Example session (replace `<id>` with the ID printed by `create`):
 ```
 
 Values containing spaces must be quoted. Whole-number values become integers,
-decimal values become floats, and other values remain strings. Identity and
+decimal values become floats, and other values remain strings for custom
+attributes. Declared model fields retain their specified types: for example,
+`User.password` remains a string and `Place.latitude` remains a float.
+List and dictionary fields are not updated through this command. Identity and
 timestamp attributes cannot be edited through `update`; model methods and
 private attribute names are also protected.
+
+To use another class, substitute its name in the commands above. For example:
+
+```text
+(hbnb) create User
+<new UUID printed here>
+(hbnb) update User <id> first_name "Ada"
+(hbnb) show User <id>
+(hbnb) all User
+```
 
 Non-interactive mode:
 
@@ -118,10 +132,21 @@ No third-party package is needed to run the application or its unit tests.
 | `models/__init__.py` | Shared `storage` instance and startup reload. |
 | `models/engine/file_storage.py` | Object registry and JSON persistence. |
 | `models/engine/__init__.py` | Storage package. |
-| `console.py` | BaseModel command interpreter. |
+| `models/user.py` | User email, password, first name and last name. |
+| `models/place.py` | Accommodation details, location and amenity IDs. |
+| `models/state.py` | State name. |
+| `models/city.py` | City name and state ID. |
+| `models/amenity.py` | Amenity name. |
+| `models/review.py` | Review text, place ID and user ID. |
+| `console.py` | Command interpreter for all seven model classes. |
 | `tests/` | Unit and subprocess integration tests. |
 | `AUTHORS` | Contributor names and email addresses; personalize this file. |
 | `START_HERE.md` | Single-download setup and GitHub submission instructions. |
+
+Each concrete model inherits `BaseModel` and declares its defaults as public
+class attributes. Only assigned instance attributes are serialized. Assign a
+new list to `place.amenity_ids` when setting an individual place's amenities,
+so the class-level default list stays empty.
 
 ## Contributors and GitHub workflow
 
