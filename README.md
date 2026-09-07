@@ -149,13 +149,7 @@ new list to `place.amenity_ids` when setting an individual place's amenities,
 so the class-level default list stays empty.
 
 ## Contributors and GitHub workflow
-
-Replace the example in `AUTHORS` with your real name and email, and list every
-teammate who contributed. The setup script can do this with its repeatable
-`--author "Full Name <email@example.com>"` option.
-
-Work on a branch and open a pull request. `START_HERE.md` explains how to add
-all project files in one Git operation. Use repository name `AirBnB_clone`.
+Prince Ubakaeze
 
 ## References
 
