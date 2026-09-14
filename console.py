@@ -1,155 +1,144 @@
 #!/usr/bin/python3
-"""Provide a command interpreter for the AirBnB clone models."""
+"""Command interpreter for the AirBnB clone."""
 
 import cmd
 import shlex
 
 from models import storage
-from models.amenity import Amenity
-from models.base_model import BaseModel
-from models.city import City
-from models.place import Place
-from models.review import Review
-from models.state import State
-from models.user import User
+from models.engine.file_storage import CLASSES
 
 
 class HBNBCommand(cmd.Cmd):
-    """Create, inspect, update and delete persisted model objects."""
+    """Create, inspect, update, and delete stored model instances."""
 
     prompt = "(hbnb) "
-    classes = {
-        "BaseModel": BaseModel,
-        "User": User,
-        "Place": Place,
-        "State": State,
-        "City": City,
-        "Amenity": Amenity,
-        "Review": Review,
-    }
-
-    def emptyline(self):
-        """Ignore an empty line instead of repeating the previous command."""
-        pass
+    classes = CLASSES
 
     def do_quit(self, arg):
-        """Exit the interpreter: quit"""
+        """Quit command to exit the program."""
         return True
 
     def do_EOF(self, arg):
-        """Exit the interpreter at end of input."""
-        self.stdout.write("\n")
+        """Exit the program at the end of input."""
         return True
 
-    def _arguments(self, arg):
-        """Parse shell-style arguments and validate the class name."""
-        try:
-            arguments = shlex.split(arg)
-        except ValueError:
-            self.stdout.write("** invalid syntax **\n")
-            return None
-        if not arguments:
-            self.stdout.write("** class name missing **\n")
-            return None
-        if arguments[0] not in self.classes:
-            self.stdout.write("** class doesn't exist **\n")
-            return None
-        return arguments
+    def emptyline(self):
+        """Do nothing when the user enters an empty line."""
+        pass
 
-    def _instance(self, arguments):
-        """Find a named instance and report a missing ID or object."""
-        if len(arguments) < 2:
-            self.stdout.write("** instance id missing **\n")
+    def _arguments(self, arg):
+        """Split arguments while preserving quoted strings."""
+        try:
+            return shlex.split(arg)
+        except ValueError:
+            print("** invalid syntax **", file=self.stdout)
             return None
-        key = "{}.{}".format(arguments[0], arguments[1])
+
+    def _class_name(self, args):
+        """Validate the class argument and return its name."""
+        if args is None:
+            return None
+        if not args:
+            print("** class name missing **", file=self.stdout)
+            return None
+        if args[0] not in self.classes:
+            print("** class doesn't exist **", file=self.stdout)
+            return None
+        return args[0]
+
+    def _instance(self, args):
+        """Validate a class and ID, then return the stored instance."""
+        class_name = self._class_name(args)
+        if class_name is None:
+            return None
+        if len(args) < 2:
+            print("** instance id missing **", file=self.stdout)
+            return None
+        key = "{}.{}".format(class_name, args[1])
         instance = storage.all().get(key)
         if instance is None:
-            self.stdout.write("** no instance found **\n")
+            print("** no instance found **", file=self.stdout)
         return instance
 
     def do_create(self, arg):
-        """Create and save an object: create BaseModel"""
-        arguments = self._arguments(arg)
-        if arguments is None:
-            return
-        instance = self.classes[arguments[0]]()
-        instance.save()
-        self.stdout.write(instance.id + "\n")
+        """Create and save an instance: create BaseModel or create <class>."""
+        args = self._arguments(arg)
+        class_name = self._class_name(args)
+        if class_name is not None:
+            instance = self.classes[class_name]()
+            instance.save()
+            print(instance.id, file=self.stdout)
 
     def do_show(self, arg):
-        """Display an object: show BaseModel <id>"""
-        arguments = self._arguments(arg)
-        if arguments is None:
-            return
-        instance = self._instance(arguments)
+        """Print an instance: show <class name> <id>."""
+        instance = self._instance(self._arguments(arg))
         if instance is not None:
-            self.stdout.write(str(instance) + "\n")
+            print(instance, file=self.stdout)
 
     def do_destroy(self, arg):
-        """Delete and persist removal of an object: destroy BaseModel <id>"""
-        arguments = self._arguments(arg)
-        if arguments is None:
-            return
-        instance = self._instance(arguments)
+        """Delete and save the change: destroy <class name> <id>."""
+        args = self._arguments(arg)
+        instance = self._instance(args)
         if instance is not None:
-            key = "{}.{}".format(arguments[0], instance.id)
-            del storage.all()[key]
+            del storage.all()["{}.{}".format(args[0], args[1])]
             storage.save()
 
     def do_all(self, arg):
-        """List objects: all [BaseModel]"""
-        class_name = None
-        if arg.strip():
-            arguments = self._arguments(arg)
-            if arguments is None:
-                return
-            class_name = arguments[0]
-        objects = [str(obj) for obj in storage.all().values()
-                   if class_name is None or type(obj).__name__ == class_name]
-        self.stdout.write(str(objects) + "\n")
+        """Print a list of instances: all [class name]."""
+        args = self._arguments(arg)
+        if args is None:
+            return
+        if args and self._class_name(args) is None:
+            return
+        instances = storage.all().values()
+        print([str(obj) for obj in instances
+               if not args or type(obj).__name__ == args[0]], file=self.stdout)
+
+    def _attribute_value(self, instance, attribute, value):
+        """Keep declared types and infer numbers for new attributes."""
+        current_value = getattr(type(instance), attribute, None)
+        if current_value is None:
+            current_value = getattr(instance, attribute, None)
+        if current_value is not None:
+            value_type = type(current_value)
+            if value_type not in (str, int, float):
+                raise ValueError("Only simple attributes can be updated")
+            return value_type(value)
+        for value_type in (int, float):
+            try:
+                return value_type(value)
+            except ValueError:
+                continue
+        return value
 
     def do_update(self, arg):
-        """Set an attribute: update BaseModel <id> <attribute> <value>"""
-        arguments = self._arguments(arg)
-        if arguments is None:
-            return
-        instance = self._instance(arguments)
+        """Update one attribute: update <class name> <id> <name> <value>."""
+        args = self._arguments(arg)
+        instance = self._instance(args)
         if instance is None:
             return
-        if len(arguments) < 3:
-            self.stdout.write("** attribute name missing **\n")
+        if len(args) < 3:
+            print("** attribute name missing **", file=self.stdout)
             return
-        if len(arguments) < 4:
-            self.stdout.write("** value missing **\n")
+        if len(args) < 4:
+            print("** value missing **", file=self.stdout)
             return
-        name, value = arguments[2:4]
-        if name in ("id", "created_at", "updated_at"):
+        attribute, value = args[2:4]
+        if attribute in ("id", "created_at", "updated_at"):
             return
-        class_value = getattr(type(instance), name, None)
-        if name.startswith("_") or callable(class_value):
-            self.stdout.write("** invalid attribute name **\n")
+        if (attribute.startswith("_")
+                or callable(getattr(type(instance), attribute, None))
+                or callable(getattr(instance, attribute, None))):
+            print("** invalid attribute name **", file=self.stdout)
             return
-        if class_value is not None:
-            value_type = type(class_value)
-            if value_type not in (str, int, float):
-                self.stdout.write("** invalid attribute value **\n")
-                return
-            try:
-                value = value_type(value)
-            except (TypeError, ValueError, OverflowError):
-                self.stdout.write("** invalid attribute value **\n")
-                return
-        else:
-            try:
-                value = int(value)
-            except ValueError:
-                try:
-                    value = float(value)
-                except ValueError:
-                    pass
-        setattr(instance, name, value)
+        try:
+            value = self._attribute_value(instance, attribute, value)
+        except (TypeError, ValueError, OverflowError):
+            print("** invalid attribute value **", file=self.stdout)
+            return
+        setattr(instance, attribute, value)
         instance.save()
 
 
-if __name__ == "__main__":
+if __name__ == '__main__':
     HBNBCommand().cmdloop()

@@ -1,5 +1,5 @@
 #!/usr/bin/python3
-"""Create and reload the application's shared file storage."""
+"""Create the shared storage engine and reload saved instances."""
 
 from models.engine.file_storage import FileStorage
 

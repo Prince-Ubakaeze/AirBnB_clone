@@ -1,11 +1,11 @@
 #!/usr/bin/python3
-"""Define the accommodation model."""
+"""Place model."""
 
 from models.base_model import BaseModel
 
 
 class Place(BaseModel):
-    """Represent an accommodation and its location, capacity and amenities."""
+    """Store a rental property's details."""
 
     city_id = ""
     user_id = ""

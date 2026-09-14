@@ -6,3 +6,10 @@ venv/
 .coverage
 htmlcov/
 *.egg-info/
+
+# AirBnB console generated and runtime files
+/file.json
+/.venv/
+/venv/
+.pytest_cache/
+/airbnb_tasks.py
