@@ -18,13 +18,16 @@ class HBNBCommand(cmd.Cmd):
         """Quit command to exit the program."""
         return True
 
+
     def do_EOF(self, arg):
-        """Exit the program at the end of input."""
+        """EOF command to exit the program."""
         return True
 
+
     def emptyline(self):
-        """Do nothing when the user enters an empty line."""
+        """Do nothing when an empty line is entered."""
         pass
+
 
     def _arguments(self, arg):
         """Split arguments while preserving quoted strings."""
