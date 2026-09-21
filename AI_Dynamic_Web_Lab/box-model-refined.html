@@ -1,0 +1,91 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Refined Box Model Lab</title>
+<style>
+body { font-family: Arial, sans-serif; margin: 25px; background: #f5f5f5; }
+.panel, .stage { background: white; padding: 20px; border-radius: 8px; margin-bottom: 20px; }
+.grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(230px, 1fr)); gap: 12px; }
+.control { border: 1px solid #ddd; padding: 10px; border-radius: 6px; }
+.control label { display: block; margin-bottom: 5px; }
+input { width: 100%; }
+#box1 {
+    width: 220px;
+    padding: 20px;
+    margin: 20px;
+    border: 5px solid #333;
+    background:
+        linear-gradient(#bde0fe, #bde0fe) content-box,
+        linear-gradient(#caffbf, #caffbf) padding-box;
+    background-clip: content-box, padding-box;
+}
+#box2 { display: inline-block; padding: 20px; background: #ddd; }
+</style>
+</head>
+<body>
+<h1>Refined Box Model Interactive Lab</h1>
+
+<div class="panel">
+    <div class="grid" id="controls"></div>
+
+    <p>
+        <label for="display">Display:</label>
+        <select id="display">
+            <option>block</option>
+            <option>inline-block</option>
+            <option>inline</option>
+        </select>
+    </p>
+</div>
+
+<div class="stage">
+    <div id="box1">Box 1</div>
+    <div id="box2">Box 2</div>
+</div>
+
+<script>
+const box = document.getElementById("box1");
+const controls = document.getElementById("controls");
+
+const properties = [
+    ["marginTop", "Margin Top", 0, 60, 20],
+    ["marginRight", "Margin Right", 0, 60, 20],
+    ["marginBottom", "Margin Bottom", 0, 60, 20],
+    ["marginLeft", "Margin Left", 0, 60, 20],
+    ["paddingTop", "Padding Top", 0, 60, 20],
+    ["paddingRight", "Padding Right", 0, 60, 20],
+    ["paddingBottom", "Padding Bottom", 0, 60, 20],
+    ["paddingLeft", "Padding Left", 0, 60, 20],
+    ["borderTopWidth", "Border Top", 0, 20, 5],
+    ["borderRightWidth", "Border Right", 0, 20, 5],
+    ["borderBottomWidth", "Border Bottom", 0, 20, 5],
+    ["borderLeftWidth", "Border Left", 0, 20, 5],
+    ["borderRadius", "Corner Radius", 0, 60, 0],
+    ["width", "Width", 80, 500, 220]
+];
+
+properties.forEach(([property, label, min, max, value]) => {
+    const wrapper = document.createElement("div");
+    wrapper.className = "control";
+
+    wrapper.innerHTML = `
+        <label>${label}: <strong id="${property}Value">${value}px</strong></label>
+        <input id="${property}" type="range" min="${min}" max="${max}" value="${value}">
+    `;
+
+    controls.appendChild(wrapper);
+
+    const input = wrapper.querySelector("input");
+    input.addEventListener("input", () => {
+        box.style[property] = input.value + "px";
+        document.getElementById(property + "Value").textContent = input.value + "px";
+    });
+});
+
+document.getElementById("display").addEventListener("change", e => {
+    box.style.display = e.target.value;
+});
+</script>
+</body>
+</html>
