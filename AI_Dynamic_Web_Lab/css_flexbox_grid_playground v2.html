@@ -1,0 +1,867 @@
+<!DOCTYPE html>
+<html lang="en" class="h-full">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CSS Flexbox & Grid Playground</title>
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    fontFamily: {
+                        sans: ['Inter', 'sans-serif'],
+                        mono: ['Fira Code', 'Monaco', 'monospace']
+                    }
+                }
+            }
+        }
+    </script>
+    <!-- Lucide Icons -->
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <style>
+        /* Custom scrollbars */
+        ::-webkit-scrollbar {
+            width: 6px;
+            height: 6px;
+        }
+        ::-webkit-scrollbar-track {
+            background: rgba(15, 23, 42, 0.6);
+        }
+        ::-webkit-scrollbar-thumb {
+            background: rgba(100, 116, 139, 0.4);
+            border-radius: 4px;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: rgba(148, 163, 184, 0.7);
+        }
+
+        /* Playground Items Animation */
+        .playground-item {
+            transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+        
+        .playground-item.selected {
+            ring-width: 3px;
+            outline: 2px solid #3b82f6;
+            outline-offset: 2px;
+            box-shadow: 0 0 20px rgba(59, 130, 246, 0.4);
+        }
+
+        /* Grid Track Overlay Lines */
+        .grid-overlay-active {
+            background-image: 
+                linear-gradient(to right, rgba(59, 130, 246, 0.15) 1px, transparent 1px),
+                linear-gradient(to bottom, rgba(59, 130, 246, 0.15) 1px, transparent 1px);
+            background-size: 20px 20px;
+        }
+    </style>
+</head>
+<body class="bg-slate-950 text-slate-100 font-sans h-full flex flex-col min-h-screen antialiased selection:bg-blue-500 selection:text-white">
+
+    <!-- Navigation / Header -->
+    <header class="border-b border-slate-800 bg-slate-900/90 backdrop-blur px-6 py-3.5 flex items-center justify-between shrink-0 sticky top-0 z-50">
+        <div class="flex items-center gap-3">
+            <div class="bg-gradient-to-tr from-indigo-600 via-blue-600 to-cyan-500 p-2 rounded-xl text-white shadow-lg shadow-blue-500/20">
+                <i data-lucide="layout-grid" class="w-5 h-5"></i>
+            </div>
+            <div>
+                <h1 class="text-lg font-bold bg-gradient-to-r from-white via-slate-200 to-slate-400 bg-clip-text text-transparent">
+                    CSS Flexbox & Grid Studio
+                </h1>
+                <p class="text-xs text-slate-400">Interactive visual layout generator & inspector</p>
+            </div>
+        </div>
+
+        <!-- Quick Actions & Presets -->
+        <div class="flex items-center gap-3">
+            <!-- Preset Selector -->
+            <div class="relative">
+                <select id="presetSelect" onchange="applyPreset(this.value)" class="bg-slate-800 hover:bg-slate-700 border border-slate-700/80 rounded-lg px-3 py-1.5 text-xs text-slate-200 focus:outline-none focus:ring-2 focus:ring-blue-500 transition cursor-pointer">
+                    <option value="" disabled selected>⚡ Load Preset Layout...</option>
+                    <option value="centeredHero">Center Hero Container (Flex)</option>
+                    <option value="threeCards">3-Column Equal Cards (Grid)</option>
+                    <option value="holyGrail">Holy Grail Layout (Grid)</option>
+                    <option value="autoFit">Responsive Auto-Fit Grid</option>
+                    <option value="stickyFooter">Sticky Footer Layout (Flex)</option>
+                </select>
+            </div>
+
+            <div class="h-4 w-px bg-slate-800"></div>
+
+            <!-- Overlay Toggle -->
+            <button id="toggleOverlayBtn" onclick="toggleOverlay()" class="px-3 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 border border-slate-700/80 text-xs text-slate-300 font-medium transition flex items-center gap-1.5">
+                <i data-lucide="grid" class="w-3.5 h-3.5 text-blue-400"></i>
+                <span id="overlayBtnText">Guides: Off</span>
+            </button>
+        </div>
+    </header>
+
+    <!-- Main Workspace -->
+    <main class="flex-1 flex flex-col lg:flex-row overflow-hidden relative">
+
+        <!-- Left Control Panel -->
+        <aside class="w-full lg:w-[400px] border-b lg:border-b-0 lg:border-r border-slate-800 bg-slate-900/80 flex flex-col shrink-0 h-auto lg:h-full overflow-y-auto">
+            
+            <div class="p-5 space-y-6">
+
+                <!-- Container / Item Tab Toggle -->
+                <div class="grid grid-cols-2 p-1 bg-slate-950 rounded-xl border border-slate-800 text-xs">
+                    <button id="tabContainerBtn" onclick="switchControlTab('container')" class="py-2 rounded-lg font-semibold bg-blue-600 text-white shadow transition flex items-center justify-center gap-1.5">
+                        <i data-lucide="box" class="w-3.5 h-3.5"></i> Parent Container
+                    </button>
+                    <button id="tabItemBtn" onclick="switchControlTab('item')" class="py-2 rounded-lg font-semibold text-slate-400 hover:text-slate-200 transition flex items-center justify-center gap-1.5">
+                        <i data-lucide="component" class="w-3.5 h-3.5"></i> Child Item (<span id="selectedItemBadge">#1</span>)
+                    </button>
+                </div>
+
+                <!-- ================= CONTAINER CONTROLS ================= -->
+                <div id="containerControls" class="space-y-5">
+                    
+                    <!-- DISPLAY MODE -->
+                    <div class="bg-slate-950/70 p-3.5 rounded-xl border border-slate-800 space-y-2">
+                        <label class="text-xs font-semibold uppercase tracking-wider text-slate-400 flex items-center justify-between">
+                            <span class="flex items-center gap-1.5"><i data-lucide="monitor" class="w-3.5 h-3.5 text-blue-400"></i> Display Mode</span>
+                            <span id="activeDisplayBadge" class="text-[10px] font-mono bg-blue-500/20 text-blue-300 px-2 py-0.5 rounded border border-blue-500/30">flex</span>
+                        </label>
+                        <select id="displaySelect" onchange="updateLayout()" class="w-full bg-slate-900 border border-slate-700/80 rounded-lg px-3 py-2 text-xs text-slate-100 font-mono focus:ring-2 focus:ring-blue-500 focus:outline-none">
+                            <option value="flex">flex</option>
+                            <option value="inline-flex">inline-flex</option>
+                            <option value="grid">grid</option>
+                            <option value="inline-grid">inline-grid</option>
+                            <option value="block">block</option>
+                        </select>
+                    </div>
+
+                    <!-- FLEXBOX SPECIFIC CONTROLS -->
+                    <div id="flexControlsGroup" class="space-y-4">
+                        <div class="flex items-center gap-1.5 pb-1 border-b border-slate-800">
+                            <i data-lucide="columns" class="w-3.5 h-3.5 text-indigo-400"></i>
+                            <h3 class="text-xs font-bold uppercase tracking-wider text-indigo-300">Flexbox Properties</h3>
+                        </div>
+
+                        <div class="grid grid-cols-2 gap-3">
+                            <div class="space-y-1">
+                                <label for="flexDirection" class="text-xs font-medium text-slate-300">flex-direction</label>
+                                <select id="flexDirection" onchange="updateLayout()" class="w-full bg-slate-950 border border-slate-700/80 rounded-lg px-2.5 py-1.5 text-xs text-slate-100 font-mono focus:ring-1 focus:ring-blue-500 focus:outline-none">
+                                    <option value="row">row</option>
+                                    <option value="row-reverse">row-reverse</option>
+                                    <option value="column">column</option>
+                                    <option value="column-reverse">column-reverse</option>
+                                </select>
+                            </div>
+
+                            <div class="space-y-1">
+                                <label for="flexWrap" class="text-xs font-medium text-slate-300">flex-wrap</label>
+                                <select id="flexWrap" onchange="updateLayout()" class="w-full bg-slate-950 border border-slate-700/80 rounded-lg px-2.5 py-1.5 text-xs text-slate-100 font-mono focus:ring-1 focus:ring-blue-500 focus:outline-none">
+                                    <option value="nowrap">nowrap</option>
+                                    <option value="wrap">wrap</option>
+                                    <option value="wrap-reverse">wrap-reverse</option>
+                                </select>
+                            </div>
+                        </div>
+
+                        <div class="space-y-1">
+                            <label for="justifyContentFlex" class="text-xs font-medium text-slate-300">justify-content</label>
+                            <select id="justifyContentFlex" onchange="updateLayout()" class="w-full bg-slate-950 border border-slate-700/80 rounded-lg px-2.5 py-1.5 text-xs text-slate-100 font-mono focus:ring-1 focus:ring-blue-500 focus:outline-none">
+                                <option value="flex-start">flex-start</option>
+                                <option value="flex-end">flex-end</option>
+                                <option value="center">center</option>
+                                <option value="space-between">space-between</option>
+                                <option value="space-around">space-around</option>
+                                <option value="space-evenly">space-evenly</option>
+                            </select>
+                        </div>
+
+                        <div class="grid grid-cols-2 gap-3">
+                            <div class="space-y-1">
+                                <label for="alignItemsFlex" class="text-xs font-medium text-slate-300">align-items</label>
+                                <select id="alignItemsFlex" onchange="updateLayout()" class="w-full bg-slate-950 border border-slate-700/80 rounded-lg px-2.5 py-1.5 text-xs text-slate-100 font-mono focus:ring-1 focus:ring-blue-500 focus:outline-none">
+                                    <option value="stretch">stretch</option>
+                                    <option value="flex-start">flex-start</option>
+                                    <option value="flex-end">flex-end</option>
+                                    <option value="center">center</option>
+                                    <option value="baseline">baseline</option>
+                                </select>
+                            </div>
+
+                            <div class="space-y-1">
+                                <label for="alignContentFlex" class="text-xs font-medium text-slate-300">align-content</label>
+                                <select id="alignContentFlex" onchange="updateLayout()" class="w-full bg-slate-950 border border-slate-700/80 rounded-lg px-2.5 py-1.5 text-xs text-slate-100 font-mono focus:ring-1 focus:ring-blue-500 focus:outline-none">
+                                    <option value="normal">normal</option>
+                                    <option value="flex-start">flex-start</option>
+                                    <option value="flex-end">flex-end</option>
+                                    <option value="center">center</option>
+                                    <option value="space-between">space-between</option>
+                                    <option value="space-around">space-around</option>
+                                    <option value="stretch">stretch</option>
+                                </select>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- GRID SPECIFIC CONTROLS -->
+                    <div id="gridControlsGroup" class="space-y-4 hidden">
+                        <div class="flex items-center gap-1.5 pb-1 border-b border-slate-800">
+                            <i data-lucide="layout-grid" class="w-3.5 h-3.5 text-cyan-400"></i>
+                            <h3 class="text-xs font-bold uppercase tracking-wider text-cyan-300">Grid Template Properties</h3>
+                        </div>
+
+                        <div class="space-y-1">
+                            <div class="flex justify-between items-center text-xs">
+                                <label for="gridCols" class="font-medium text-slate-300">grid-template-columns</label>
+                            </div>
+                            <div class="flex gap-2">
+                                <select id="gridColsSelect" onchange="handleGridColsPreset(this.value)" class="w-1/2 bg-slate-950 border border-slate-700/80 rounded-lg px-2.5 py-1.5 text-xs text-slate-100 font-mono focus:ring-1 focus:ring-blue-500 focus:outline-none">
+                                    <option value="1fr 1fr">1fr 1fr</option>
+                                    <option value="1fr 1fr 1fr" selected>1fr 1fr 1fr</option>
+                                    <option value="100px 1fr 100px">100px 1fr 100px</option>
+                                    <option value="repeat(auto-fit, minmax(120px, 1fr))">auto-fit (minmax)</option>
+                                    <option value="repeat(12, 1fr)">repeat(12, 1fr)</option>
+                                    <option value="custom">-- Custom --</option>
+                                </select>
+                                <input type="text" id="gridColsInput" value="1fr 1fr 1fr" oninput="updateLayout()" class="w-1/2 bg-slate-950 border border-slate-700/80 rounded-lg px-2.5 py-1.5 text-xs font-mono text-cyan-300 focus:ring-1 focus:ring-blue-500 focus:outline-none">
+                            </div>
+                        </div>
+
+                        <div class="space-y-1">
+                            <label for="gridRowsInput" class="text-xs font-medium text-slate-300">grid-template-rows</label>
+                            <input type="text" id="gridRowsInput" value="auto" oninput="updateLayout()" placeholder="e.g. auto 1fr auto" class="w-full bg-slate-950 border border-slate-700/80 rounded-lg px-2.5 py-1.5 text-xs font-mono text-cyan-300 focus:ring-1 focus:ring-blue-500 focus:outline-none">
+                        </div>
+
+                        <div class="grid grid-cols-2 gap-3">
+                            <div class="space-y-1">
+                                <label for="justifyItemsGrid" class="text-xs font-medium text-slate-300">justify-items</label>
+                                <select id="justifyItemsGrid" onchange="updateLayout()" class="w-full bg-slate-950 border border-slate-700/80 rounded-lg px-2.5 py-1.5 text-xs text-slate-100 font-mono focus:ring-1 focus:ring-blue-500 focus:outline-none">
+                                    <option value="stretch">stretch</option>
+                                    <option value="start">start</option>
+                                    <option value="end">end</option>
+                                    <option value="center">center</option>
+                                </select>
+                            </div>
+
+                            <div class="space-y-1">
+                                <label for="alignItemsGrid" class="text-xs font-medium text-slate-300">align-items</label>
+                                <select id="alignItemsGrid" onchange="updateLayout()" class="w-full bg-slate-950 border border-slate-700/80 rounded-lg px-2.5 py-1.5 text-xs text-slate-100 font-mono focus:ring-1 focus:ring-blue-500 focus:outline-none">
+                                    <option value="stretch">stretch</option>
+                                    <option value="start">start</option>
+                                    <option value="end">end</option>
+                                    <option value="center">center</option>
+                                </select>
+                            </div>
+                        </div>
+
+                        <div class="grid grid-cols-2 gap-3">
+                            <div class="space-y-1">
+                                <label for="justifyContentGrid" class="text-xs font-medium text-slate-300">justify-content</label>
+                                <select id="justifyContentGrid" onchange="updateLayout()" class="w-full bg-slate-950 border border-slate-700/80 rounded-lg px-2.5 py-1.5 text-xs text-slate-100 font-mono focus:ring-1 focus:ring-blue-500 focus:outline-none">
+                                    <option value="stretch">stretch</option>
+                                    <option value="start">start</option>
+                                    <option value="end">end</option>
+                                    <option value="center">center</option>
+                                    <option value="space-between">space-between</option>
+                                    <option value="space-around">space-around</option>
+                                    <option value="space-evenly">space-evenly</option>
+                                </select>
+                            </div>
+
+                            <div class="space-y-1">
+                                <label for="alignContentGrid" class="text-xs font-medium text-slate-300">align-content</label>
+                                <select id="alignContentGrid" onchange="updateLayout()" class="w-full bg-slate-950 border border-slate-700/80 rounded-lg px-2.5 py-1.5 text-xs text-slate-100 font-mono focus:ring-1 focus:ring-blue-500 focus:outline-none">
+                                    <option value="stretch">stretch</option>
+                                    <option value="start">start</option>
+                                    <option value="end">end</option>
+                                    <option value="center">center</option>
+                                    <option value="space-between">space-between</option>
+                                    <option value="space-around">space-around</option>
+                                    <option value="space-evenly">space-evenly</option>
+                                </select>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- GAP & PADDING CONTROLS -->
+                    <div class="space-y-3 pt-2 border-t border-slate-800">
+                        <div class="space-y-1">
+                            <div class="flex justify-between items-center text-xs">
+                                <span class="text-slate-300 font-medium">gap</span>
+                                <span id="gapVal" class="font-mono text-blue-400">16px</span>
+                            </div>
+                            <input type="range" id="gapInput" min="0" max="64" value="16" oninput="updateLayout()" class="w-full accent-blue-500 cursor-pointer h-1.5 bg-slate-800 rounded-lg">
+                        </div>
+
+                        <div class="space-y-1">
+                            <div class="flex justify-between items-center text-xs">
+                                <span class="text-slate-300 font-medium">container padding</span>
+                                <span id="paddingVal" class="font-mono text-blue-400">20px</span>
+                            </div>
+                            <input type="range" id="paddingInput" min="0" max="64" value="20" oninput="updateLayout()" class="w-full accent-blue-500 cursor-pointer h-1.5 bg-slate-800 rounded-lg">
+                        </div>
+                    </div>
+
+                    <!-- ITEM MANAGEMENT BUTTONS -->
+                    <div class="pt-2 border-t border-slate-800 flex gap-2">
+                        <button onclick="addItem()" class="flex-1 bg-slate-800 hover:bg-slate-700 border border-slate-700 text-slate-200 py-2 rounded-lg text-xs font-semibold transition flex items-center justify-center gap-1.5">
+                            <i data-lucide="plus" class="w-3.5 h-3.5 text-emerald-400"></i> Add Child Item
+                        </button>
+                        <button onclick="removeItem()" class="flex-1 bg-slate-800 hover:bg-slate-700 border border-slate-700 text-slate-200 py-2 rounded-lg text-xs font-semibold transition flex items-center justify-center gap-1.5">
+                            <i data-lucide="minus" class="w-3.5 h-3.5 text-rose-400"></i> Remove Item
+                        </button>
+                    </div>
+
+                </div>
+
+                <!-- ================= ITEM CONTROLS ================= -->
+                <div id="itemControls" class="space-y-5 hidden">
+                    
+                    <div class="bg-blue-950/40 border border-blue-800/60 rounded-xl p-3 text-xs text-blue-200 flex items-center justify-between">
+                        <span>Currently Editing: <strong id="activeItemLabel" class="text-white font-mono">Item #1</strong></span>
+                        <span class="text-[10px] bg-blue-600 px-2 py-0.5 rounded text-white font-bold">Selected</span>
+                    </div>
+
+                    <!-- Item Flex Properties -->
+                    <div class="space-y-4">
+                        <div class="flex items-center gap-1.5 pb-1 border-b border-slate-800">
+                            <i data-lucide="sliders" class="w-3.5 h-3.5 text-purple-400"></i>
+                            <h3 class="text-xs font-bold uppercase tracking-wider text-purple-300">Item Layout Overrides</h3>
+                        </div>
+
+                        <!-- Flex Grow / Shrink -->
+                        <div class="grid grid-cols-2 gap-3">
+                            <div class="space-y-1">
+                                <div class="flex justify-between text-xs">
+                                    <span class="text-slate-300">flex-grow</span>
+                                    <span id="itemGrowVal" class="font-mono text-purple-300">0</span>
+                                </div>
+                                <input type="range" id="itemGrowInput" min="0" max="5" value="0" oninput="updateSelectedItemStyle()" class="w-full accent-purple-500 cursor-pointer h-1.5 bg-slate-800 rounded-lg">
+                            </div>
+
+                            <div class="space-y-1">
+                                <div class="flex justify-between text-xs">
+                                    <span class="text-slate-300">flex-shrink</span>
+                                    <span id="itemShrinkVal" class="font-mono text-purple-300">1</span>
+                                </div>
+                                <input type="range" id="itemShrinkInput" min="0" max="5" value="1" oninput="updateSelectedItemStyle()" class="w-full accent-purple-500 cursor-pointer h-1.5 bg-slate-800 rounded-lg">
+                            </div>
+                        </div>
+
+                        <div class="space-y-1">
+                            <label for="itemBasisInput" class="text-xs font-medium text-slate-300">flex-basis</label>
+                            <input type="text" id="itemBasisInput" value="auto" oninput="updateSelectedItemStyle()" placeholder="e.g. auto, 150px, 30%" class="w-full bg-slate-950 border border-slate-700/80 rounded-lg px-2.5 py-1.5 text-xs font-mono text-purple-300 focus:ring-1 focus:ring-blue-500 focus:outline-none">
+                        </div>
+
+                        <div class="space-y-1">
+                            <label for="alignSelfSelect" class="text-xs font-medium text-slate-300">align-self</label>
+                            <select id="alignSelfSelect" onchange="updateSelectedItemStyle()" class="w-full bg-slate-950 border border-slate-700/80 rounded-lg px-2.5 py-1.5 text-xs text-slate-100 font-mono focus:ring-1 focus:ring-blue-500 focus:outline-none">
+                                <option value="auto">auto</option>
+                                <option value="flex-start">flex-start / start</option>
+                                <option value="flex-end">flex-end / end</option>
+                                <option value="center">center</option>
+                                <option value="baseline">baseline</option>
+                                <option value="stretch">stretch</option>
+                            </select>
+                        </div>
+
+                        <div class="grid grid-cols-2 gap-3">
+                            <div class="space-y-1">
+                                <label for="itemGridColInput" class="text-xs font-medium text-slate-300">grid-column</label>
+                                <input type="text" id="itemGridColInput" value="auto" oninput="updateSelectedItemStyle()" placeholder="e.g. span 2, 1 / 3" class="w-full bg-slate-950 border border-slate-700/80 rounded-lg px-2.5 py-1.5 text-xs font-mono text-purple-300 focus:ring-1 focus:ring-blue-500 focus:outline-none">
+                            </div>
+
+                            <div class="space-y-1">
+                                <label for="itemGridRowInput" class="text-xs font-medium text-slate-300">grid-row</label>
+                                <input type="text" id="itemGridRowInput" value="auto" oninput="updateSelectedItemStyle()" placeholder="e.g. span 2, 1 / 3" class="w-full bg-slate-950 border border-slate-700/80 rounded-lg px-2.5 py-1.5 text-xs font-mono text-purple-300 focus:ring-1 focus:ring-blue-500 focus:outline-none">
+                            </div>
+                        </div>
+
+                        <div class="space-y-1">
+                            <div class="flex justify-between text-xs">
+                                <span class="text-slate-300">order</span>
+                                <span id="itemOrderVal" class="font-mono text-purple-300">0</span>
+                            </div>
+                            <input type="range" id="itemOrderInput" min="-5" max="5" value="0" oninput="updateSelectedItemStyle()" class="w-full accent-purple-500 cursor-pointer h-1.5 bg-slate-800 rounded-lg">
+                        </div>
+
+                        <button onclick="resetSelectedItem()" class="w-full bg-slate-800 hover:bg-slate-700 text-slate-300 py-1.5 rounded-lg text-xs font-medium transition flex items-center justify-center gap-1 border border-slate-700">
+                            <i data-lucide="rotate-ccw" class="w-3 h-3"></i> Reset Selected Item Styles
+                        </button>
+
+                    </div>
+
+                </div>
+
+            </div>
+        </aside>
+
+        <!-- Right Preview & Code Area -->
+        <div class="flex-1 flex flex-col h-full overflow-y-auto bg-slate-950 relative">
+            
+            <!-- Canvas Simulation Container -->
+            <div class="p-6 flex-1 flex flex-col justify-center items-center min-h-[420px] bg-[radial-gradient(#1e293b_1px,transparent_1px)] [background-size:16px_16px] relative overflow-hidden">
+
+                <!-- Header Status Readout -->
+                <div class="w-full max-w-4xl flex items-center justify-between mb-2 text-xs text-slate-400 font-mono">
+                    <span class="flex items-center gap-2">
+                        <span class="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
+                        LIVE CONTAINER PREVIEW
+                    </span>
+                    <span id="containerDimensions" class="text-slate-500">Target Parent Area</span>
+                </div>
+
+                <!-- MAIN PLAYGROUND CONTAINER -->
+                <div id="playgroundContainer" class="w-full max-w-4xl bg-slate-900/80 border-2 border-dashed border-slate-700 rounded-2xl min-h-[320px] transition-all relative">
+                    <!-- Dynamic Items Injected Here -->
+                </div>
+
+            </div>
+
+            <!-- Code Output & Inspector -->
+            <div class="p-6 border-t border-slate-800 bg-slate-900/80 shrink-0">
+                <div class="max-w-4xl mx-auto space-y-3">
+                    
+                    <div class="flex items-center justify-between">
+                        <h3 class="text-xs font-bold uppercase tracking-wider text-slate-300 flex items-center gap-2">
+                            <i data-lucide="code" class="w-4 h-4 text-purple-400"></i> Generated CSS Rule Set
+                        </h3>
+                        <button id="copyCssBtn" onclick="copyCssCode()" class="text-xs bg-slate-800 hover:bg-slate-700 text-slate-200 px-3 py-1.5 rounded-lg border border-slate-700 transition flex items-center gap-1.5 shadow">
+                            <i data-lucide="copy" class="w-3.5 h-3.5 text-emerald-400"></i> <span id="copyBtnText">Copy CSS</span>
+                        </button>
+                    </div>
+
+                    <pre id="cssSnippet" class="bg-slate-950 border border-slate-800 rounded-xl p-4 text-xs font-mono text-emerald-400 overflow-x-auto leading-relaxed shadow-inner">
+.container {
+  display: flex;
+}
+                    </pre>
+
+                </div>
+            </div>
+
+        </div>
+
+    </main>
+
+    <script>
+        // Item Preset Colors
+        const itemColors = [
+            { bg: 'bg-indigo-600/30', border: 'border-indigo-500', text: 'text-indigo-200', badge: 'bg-indigo-500' },
+            { bg: 'bg-emerald-600/30', border: 'border-emerald-500', text: 'text-emerald-200', badge: 'bg-emerald-500' },
+            { bg: 'bg-amber-600/30', border: 'border-amber-500', text: 'text-amber-200', badge: 'bg-amber-500' },
+            { bg: 'bg-rose-600/30', border: 'border-rose-500', text: 'text-rose-200', badge: 'bg-rose-500' },
+            { bg: 'bg-cyan-600/30', border: 'border-cyan-500', text: 'text-cyan-200', badge: 'bg-cyan-500' },
+            { bg: 'bg-purple-600/30', border: 'border-purple-500', text: 'text-purple-200', badge: 'bg-purple-500' },
+            { bg: 'bg-orange-600/30', border: 'border-orange-500', text: 'text-orange-200', badge: 'bg-orange-500' },
+            { bg: 'bg-teal-600/30', border: 'border-teal-500', text: 'text-teal-200', badge: 'bg-teal-500' }
+        ];
+
+        // Application State
+        let items = [
+            { id: 1, grow: 0, shrink: 1, basis: 'auto', alignSelf: 'auto', gridCol: 'auto', gridRow: 'auto', order: 0 },
+            { id: 2, grow: 0, shrink: 1, basis: 'auto', alignSelf: 'auto', gridCol: 'auto', gridRow: 'auto', order: 0 },
+            { id: 3, grow: 0, shrink: 1, basis: 'auto', alignSelf: 'auto', gridCol: 'auto', gridRow: 'auto', order: 0 },
+            { id: 4, grow: 0, shrink: 1, basis: 'auto', alignSelf: 'auto', gridCol: 'auto', gridRow: 'auto', order: 0 },
+            { id: 5, grow: 0, shrink: 1, basis: 'auto', alignSelf: 'auto', gridCol: 'auto', gridRow: 'auto', order: 0 }
+        ];
+
+        let selectedItemId = 1;
+        let showOverlay = false;
+
+        // Elements
+        const playgroundContainer = document.getElementById('playgroundContainer');
+        const displaySelect = document.getElementById('displaySelect');
+        const activeDisplayBadge = document.getElementById('activeDisplayBadge');
+        
+        // Flex Elements
+        const flexControlsGroup = document.getElementById('flexControlsGroup');
+        const flexDirection = document.getElementById('flexDirection');
+        const flexWrap = document.getElementById('flexWrap');
+        const justifyContentFlex = document.getElementById('justifyContentFlex');
+        const alignItemsFlex = document.getElementById('alignItemsFlex');
+        const alignContentFlex = document.getElementById('alignContentFlex');
+
+        // Grid Elements
+        const gridControlsGroup = document.getElementById('gridControlsGroup');
+        const gridColsSelect = document.getElementById('gridColsSelect');
+        const gridColsInput = document.getElementById('gridColsInput');
+        const gridRowsInput = document.getElementById('gridRowsInput');
+        const justifyItemsGrid = document.getElementById('justifyItemsGrid');
+        const alignItemsGrid = document.getElementById('alignItemsGrid');
+        const justifyContentGrid = document.getElementById('justifyContentGrid');
+        const alignContentGrid = document.getElementById('alignContentGrid');
+
+        // Shared Elements
+        const gapInput = document.getElementById('gapInput');
+        const gapVal = document.getElementById('gapVal');
+        const paddingInput = document.getElementById('paddingInput');
+        const paddingVal = document.getElementById('paddingVal');
+        const cssSnippet = document.getElementById('cssSnippet');
+
+        // Item Form Inputs
+        const itemGrowInput = document.getElementById('itemGrowInput');
+        const itemShrinkInput = document.getElementById('itemShrinkInput');
+        const itemBasisInput = document.getElementById('itemBasisInput');
+        const alignSelfSelect = document.getElementById('alignSelfSelect');
+        const itemGridColInput = document.getElementById('itemGridColInput');
+        const itemGridRowInput = document.getElementById('itemGridRowInput');
+        const itemOrderInput = document.getElementById('itemOrderInput');
+
+        document.addEventListener('DOMContentLoaded', () => {
+            if (window.lucide) lucide.createIcons();
+            renderItems();
+            updateLayout();
+        });
+
+        function renderItems() {
+            playgroundContainer.innerHTML = '';
+
+            items.forEach((item, index) => {
+                const colorScheme = itemColors[index % itemColors.length];
+                const isSelected = item.id === selectedItemId;
+
+                const el = document.createElement('div');
+                el.id = `item-${item.id}`;
+                el.className = `playground-item p-4 rounded-xl border-2 ${colorScheme.bg} ${colorScheme.border} ${colorScheme.text} font-medium flex flex-col justify-between cursor-pointer select-none min-h-[80px] min-w-[80px] ${isSelected ? 'selected' : ''}`;
+                
+                // Item Styles
+                el.style.flexGrow = item.grow;
+                el.style.flexShrink = item.shrink;
+                el.style.flexBasis = item.basis;
+                el.style.alignSelf = item.alignSelf;
+                el.style.gridColumn = item.gridCol;
+                el.style.gridRow = item.gridRow;
+                el.style.order = item.order;
+
+                el.onclick = (e) => {
+                    e.stopPropagation();
+                    selectItem(item.id);
+                };
+
+                el.innerHTML = `
+                    <div class="flex items-center justify-between gap-2 mb-2">
+                        <span class="text-xs font-bold font-mono px-2 py-0.5 rounded ${colorScheme.badge} text-white shadow">
+                            #${item.id}
+                        </span>
+                        <i data-lucide="mouse-pointer-click" class="w-3 h-3 opacity-60"></i>
+                    </div>
+                    <div class="text-[11px] font-mono text-slate-300">
+                        Box Item
+                    </div>
+                `;
+
+                playgroundContainer.appendChild(el);
+            });
+
+            if (window.lucide) lucide.createIcons();
+        }
+
+        function selectItem(id) {
+            selectedItemId = id;
+            document.getElementById('selectedItemBadge').textContent = `#${id}`;
+            document.getElementById('activeItemLabel').textContent = `Item #${id}`;
+
+            const item = items.find(i => i.id === id);
+            if (item) {
+                itemGrowInput.value = item.grow;
+                document.getElementById('itemGrowVal').textContent = item.grow;
+
+                itemShrinkInput.value = item.shrink;
+                document.getElementById('itemShrinkVal').textContent = item.shrink;
+
+                itemBasisInput.value = item.basis;
+                alignSelfSelect.value = item.alignSelf;
+                itemGridColInput.value = item.gridCol;
+                itemGridRowInput.value = item.gridRow;
+
+                itemOrderInput.value = item.order;
+                document.getElementById('itemOrderVal').textContent = item.order;
+            }
+
+            renderItems();
+            updateLayout();
+        }
+
+        function switchControlTab(tab) {
+            const containerControls = document.getElementById('containerControls');
+            const itemControls = document.getElementById('itemControls');
+            const tabContainerBtn = document.getElementById('tabContainerBtn');
+            const tabItemBtn = document.getElementById('tabItemBtn');
+
+            if (tab === 'container') {
+                containerControls.classList.remove('hidden');
+                itemControls.classList.add('hidden');
+                tabContainerBtn.className = "py-2 rounded-lg font-semibold bg-blue-600 text-white shadow transition flex items-center justify-center gap-1.5";
+                tabItemBtn.className = "py-2 rounded-lg font-semibold text-slate-400 hover:text-slate-200 transition flex items-center justify-center gap-1.5";
+            } else {
+                containerControls.classList.add('hidden');
+                itemControls.classList.remove('hidden');
+                tabItemBtn.className = "py-2 rounded-lg font-semibold bg-blue-600 text-white shadow transition flex items-center justify-center gap-1.5";
+                tabContainerBtn.className = "py-2 rounded-lg font-semibold text-slate-400 hover:text-slate-200 transition flex items-center justify-center gap-1.5";
+            }
+        }
+
+        function handleGridColsPreset(val) {
+            if (val !== 'custom') {
+                gridColsInput.value = val;
+                updateLayout();
+            }
+        }
+
+        function updateLayout() {
+            const display = displaySelect.value;
+            activeDisplayBadge.textContent = display;
+
+            // Toggle Controls Visibility based on Display
+            if (display.includes('flex')) {
+                flexControlsGroup.classList.remove('hidden');
+                gridControlsGroup.classList.add('hidden');
+            } else if (display.includes('grid')) {
+                gridControlsGroup.classList.remove('hidden');
+                flexControlsGroup.classList.add('hidden');
+            } else {
+                flexControlsGroup.classList.add('hidden');
+                gridControlsGroup.classList.add('hidden');
+            }
+
+            const gap = `${gapInput.value}px`;
+            const padding = `${paddingInput.value}px`;
+            gapVal.textContent = gap;
+            paddingVal.textContent = padding;
+
+            // Container Styles Reset & Setup
+            playgroundContainer.style.display = display;
+            playgroundContainer.style.gap = gap;
+            playgroundContainer.style.padding = padding;
+
+            if (display.includes('flex')) {
+                playgroundContainer.style.flexDirection = flexDirection.value;
+                playgroundContainer.style.flexWrap = flexWrap.value;
+                playgroundContainer.style.justifyContent = justifyContentFlex.value;
+                playgroundContainer.style.alignItems = alignItemsFlex.value;
+                playgroundContainer.style.alignContent = alignContentFlex.value;
+                
+                // Clear Grid
+                playgroundContainer.style.gridTemplateColumns = '';
+                playgroundContainer.style.gridTemplateRows = '';
+                playgroundContainer.style.justifyItems = '';
+            } else if (display.includes('grid')) {
+                playgroundContainer.style.gridTemplateColumns = gridColsInput.value;
+                playgroundContainer.style.gridTemplateRows = gridRowsInput.value;
+                playgroundContainer.style.justifyItems = justifyItemsGrid.value;
+                playgroundContainer.style.alignItems = alignItemsGrid.value;
+                playgroundContainer.style.justifyContent = justifyContentGrid.value;
+                playgroundContainer.style.alignContent = alignContentGrid.value;
+
+                // Clear Flex
+                playgroundContainer.style.flexDirection = '';
+                playgroundContainer.style.flexWrap = '';
+            }
+
+            generateCssSnippet();
+        }
+
+        function updateSelectedItemStyle() {
+            const item = items.find(i => i.id === selectedItemId);
+            if (!item) return;
+
+            item.grow = parseInt(itemGrowInput.value);
+            document.getElementById('itemGrowVal').textContent = item.grow;
+
+            item.shrink = parseInt(itemShrinkInput.value);
+            document.getElementById('itemShrinkVal').textContent = item.shrink;
+
+            item.basis = itemBasisInput.value || 'auto';
+            item.alignSelf = alignSelfSelect.value;
+            item.gridCol = itemGridColInput.value || 'auto';
+            item.gridRow = itemGridRowInput.value || 'auto';
+
+            item.order = parseInt(itemOrderInput.value);
+            document.getElementById('itemOrderVal').textContent = item.order;
+
+            renderItems();
+            updateLayout();
+        }
+
+        function resetSelectedItem() {
+            const item = items.find(i => i.id === selectedItemId);
+            if (!item) return;
+
+            item.grow = 0;
+            item.shrink = 1;
+            item.basis = 'auto';
+            item.alignSelf = 'auto';
+            item.gridCol = 'auto';
+            item.gridRow = 'auto';
+            item.order = 0;
+
+            selectItem(selectedItemId);
+        }
+
+        function addItem() {
+            if (items.length >= 12) return;
+            const newId = items.length > 0 ? Math.max(...items.map(i => i.id)) + 1 : 1;
+            items.push({ id: newId, grow: 0, shrink: 1, basis: 'auto', alignSelf: 'auto', gridCol: 'auto', gridRow: 'auto', order: 0 });
+            renderItems();
+            updateLayout();
+        }
+
+        function removeItem() {
+            if (items.length <= 1) return;
+            items.pop();
+            if (!items.find(i => i.id === selectedItemId)) {
+                selectedItemId = items[0].id;
+            }
+            renderItems();
+            updateLayout();
+        }
+
+        function toggleOverlay() {
+            showOverlay = !showOverlay;
+            const btnText = document.getElementById('overlayBtnText');
+            if (showOverlay) {
+                playgroundContainer.classList.add('grid-overlay-active');
+                btnText.textContent = 'Guides: On';
+            } else {
+                playgroundContainer.classList.remove('grid-overlay-active');
+                btnText.textContent = 'Guides: Off';
+            }
+        }
+
+        function generateCssSnippet() {
+            const display = displaySelect.value;
+            let css = `.container {\n`;
+            css += `  display: ${display};\n`;
+            css += `  gap: ${gapInput.value}px;\n`;
+            css += `  padding: ${paddingInput.value}px;\n`;
+
+            if (display.includes('flex')) {
+                css += `  flex-direction: ${flexDirection.value};\n`;
+                css += `  flex-wrap: ${flexWrap.value};\n`;
+                css += `  justify-content: ${justifyContentFlex.value};\n`;
+                css += `  align-items: ${alignItemsFlex.value};\n`;
+                if (alignContentFlex.value !== 'normal') {
+                    css += `  align-content: ${alignContentFlex.value};\n`;
+                }
+            } else if (display.includes('grid')) {
+                css += `  grid-template-columns: ${gridColsInput.value};\n`;
+                if (gridRowsInput.value && gridRowsInput.value !== 'auto') {
+                    css += `  grid-template-rows: ${gridRowsInput.value};\n`;
+                }
+                css += `  justify-items: ${justifyItemsGrid.value};\n`;
+                css += `  align-items: ${alignItemsGrid.value};\n`;
+                css += `  justify-content: ${justifyContentGrid.value};\n`;
+                css += `  align-content: ${alignContentGrid.value};\n`;
+            }
+
+            css += `}\n`;
+
+            // Active Item Override Output
+            const activeItem = items.find(i => i.id === selectedItemId);
+            if (activeItem) {
+                let itemCss = '';
+                if (activeItem.grow !== 0) itemCss += `  flex-grow: ${activeItem.grow};\n`;
+                if (activeItem.shrink !== 1) itemCss += `  flex-shrink: ${activeItem.shrink};\n`;
+                if (activeItem.basis !== 'auto') itemCss += `  flex-basis: ${activeItem.basis};\n`;
+                if (activeItem.alignSelf !== 'auto') itemCss += `  align-self: ${activeItem.alignSelf};\n`;
+                if (activeItem.gridCol !== 'auto') itemCss += `  grid-column: ${activeItem.gridCol};\n`;
+                if (activeItem.gridRow !== 'auto') itemCss += `  grid-row: ${activeItem.gridRow};\n`;
+                if (activeItem.order !== 0) itemCss += `  order: ${activeItem.order};\n`;
+
+                if (itemCss) {
+                    css += `\n/* Selected Child Element */\n.container > .item-${activeItem.id} {\n${itemCss}}`;
+                }
+            }
+
+            cssSnippet.textContent = css;
+        }
+
+        // Layout Presets
+        function applyPreset(preset) {
+            switch(preset) {
+                case 'centeredHero':
+                    displaySelect.value = 'flex';
+                    flexDirection.value = 'column';
+                    justifyContentFlex.value = 'center';
+                    alignItemsFlex.value = 'center';
+                    gapInput.value = 24;
+                    items = [
+                        { id: 1, grow: 0, shrink: 1, basis: 'auto', alignSelf: 'auto', gridCol: 'auto', gridRow: 'auto', order: 0 },
+                        { id: 2, grow: 0, shrink: 1, basis: 'auto', alignSelf: 'auto', gridCol: 'auto', gridRow: 'auto', order: 0 },
+                        { id: 3, grow: 0, shrink: 1, basis: 'auto', alignSelf: 'auto', gridCol: 'auto', gridRow: 'auto', order: 0 }
+                    ];
+                    break;
+                case 'threeCards':
+                    displaySelect.value = 'grid';
+                    gridColsSelect.value = '1fr 1fr 1fr';
+                    gridColsInput.value = '1fr 1fr 1fr';
+                    gapInput.value = 20;
+                    items = [
+                        { id: 1, grow: 0, shrink: 1, basis: 'auto', alignSelf: 'auto', gridCol: 'auto', gridRow: 'auto', order: 0 },
+                        { id: 2, grow: 0, shrink: 1, basis: 'auto', alignSelf: 'auto', gridCol: 'auto', gridRow: 'auto', order: 0 },
+                        { id: 3, grow: 0, shrink: 1, basis: 'auto', alignSelf: 'auto', gridCol: 'auto', gridRow: 'auto', order: 0 }
+                    ];
+                    break;
+                case 'holyGrail':
+                    displaySelect.value = 'grid';
+                    gridColsSelect.value = 'custom';
+                    gridColsInput.value = '180px 1fr 180px';
+                    gridRowsInput.value = 'auto 1fr auto';
+                    gapInput.value = 16;
+                    items = [
+                        { id: 1, grow: 0, shrink: 1, basis: 'auto', alignSelf: 'auto', gridCol: '1 / -1', gridRow: 'auto', order: 0 },
+                        { id: 2, grow: 0, shrink: 1, basis: 'auto', alignSelf: 'auto', gridCol: 'auto', gridRow: 'auto', order: 0 },
+                        { id: 3, grow: 0, shrink: 1, basis: 'auto', alignSelf: 'auto', gridCol: 'auto', gridRow: 'auto', order: 0 },
+                        { id: 4, grow: 0, shrink: 1, basis: 'auto', alignSelf: 'auto', gridCol: 'auto', gridRow: 'auto', order: 0 },
+                        { id: 5, grow: 0, shrink: 1, basis: 'auto', alignSelf: 'auto', gridCol: '1 / -1', gridRow: 'auto', order: 0 }
+                    ];
+                    break;
+                case 'autoFit':
+                    displaySelect.value = 'grid';
+                    gridColsSelect.value = 'repeat(auto-fit, minmax(120px, 1fr))';
+                    gridColsInput.value = 'repeat(auto-fit, minmax(120px, 1fr))';
+                    gapInput.value = 16;
+                    items = [
+                        { id: 1, grow: 0, shrink: 1, basis: 'auto', alignSelf: 'auto', gridCol: 'auto', gridRow: 'auto', order: 0 },
+                        { id: 2, grow: 0, shrink: 1, basis: 'auto', alignSelf: 'auto', gridCol: 'auto', gridRow: 'auto', order: 0 },
+                        { id: 3, grow: 0, shrink: 1, basis: 'auto', alignSelf: 'auto', gridCol: 'auto', gridRow: 'auto', order: 0 },
+                        { id: 4, grow: 0, shrink: 1, basis: 'auto', alignSelf: 'auto', gridCol: 'auto', gridRow: 'auto', order: 0 },
+                        { id: 5, grow: 0, shrink: 1, basis: 'auto', alignSelf: 'auto', gridCol: 'auto', gridRow: 'auto', order: 0 },
+                        { id: 6, grow: 0, shrink: 1, basis: 'auto', alignSelf: 'auto', gridCol: 'auto', gridRow: 'auto', order: 0 }
+                    ];
+                    break;
+                case 'stickyFooter':
+                    displaySelect.value = 'flex';
+                    flexDirection.value = 'column';
+                    gapInput.value = 16;
+                    items = [
+                        { id: 1, grow: 0, shrink: 1, basis: 'auto', alignSelf: 'auto', gridCol: 'auto', gridRow: 'auto', order: 0 },
+                        { id: 2, grow: 1, shrink: 1, basis: 'auto', alignSelf: 'auto', gridCol: 'auto', gridRow: 'auto', order: 0 },
+                        { id: 3, grow: 0, shrink: 1, basis: 'auto', alignSelf: 'auto', gridCol: 'auto', gridRow: 'auto', order: 0 }
+                    ];
+                    break;
+            }
+
+            selectedItemId = items[0].id;
+            renderItems();
+            updateLayout();
+        }
+
+        function copyCssCode() {
+            const code = cssSnippet.textContent;
+            const tempTextArea = document.createElement('textarea');
+            tempTextArea.value = code;
+            document.body.appendChild(tempTextArea);
+            tempTextArea.select();
+            document.execCommand('copy');
+            document.body.removeChild(tempTextArea);
+
+            const copyBtnText = document.getElementById('copyBtnText');
+            copyBtnText.textContent = 'Copied!';
+            setTimeout(() => {
+                copyBtnText.textContent = 'Copy CSS';
+            }, 2000);
+        }
+    </script>
+</body>
+</html>
